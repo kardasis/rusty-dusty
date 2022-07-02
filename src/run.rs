@@ -1,17 +1,16 @@
 use crate::constants::{
-    self, INTERVAL_SIZE, MILLIS_PER_HOUR, SPEED_SMOOTHING, TICKS_PER_MILE, KILOMETERS_PER_MILE,
+    self, INTERVAL_SIZE, KILOMETERS_PER_MILE, MILLIS_PER_HOUR, SPEED_SMOOTHING, TICKS_PER_MILE,
 };
 use json::{object, JsonValue};
 use rocket::serde::Serialize;
 use serde::Deserialize;
 use std::collections::HashMap;
 
+
 pub type Tickstamp = u32; // ms on device
 type Timestamp = u32; // time within run in seconds, since start
 type Speed = f32; // mph
 type Distance = f32; // distance in miles
-
-pub type DistanceRecordSet<'a> = HashMap<&'a str, Option<DistanceRecord>>;
 
 #[derive(Debug, PartialEq)]
 pub enum InvalidRunError {
@@ -47,6 +46,14 @@ pub struct LargestRect {
     pub height: f32,
     #[serde(rename = "area")]
     pub area: f32,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct DistanceRecordSet<'a>(#[serde(borrow)] pub HashMap<&'a str, Option<DistanceRecord>>);
+impl<'a> DistanceRecordSet<'a> {
+    fn new () -> DistanceRecordSet<'a> {
+        DistanceRecordSet(HashMap::new())
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -217,13 +224,6 @@ impl Summary<'_> {
                     } else {
                         bests
                     }
-
-                    //  if (data[right].time - data[left].time) <  b.time {
-                    //     mileTime = data[right].time - data[left].time
-                    //     bestLeft = data[left].time
-                    //     bestRight = data[right].time
-                    //     leftD = data[left].distance
-                    // rightD = data[right].distance
                 }
                 None => Some(DistanceRecord {
                     start_time: data[left].time,
@@ -244,7 +244,7 @@ impl Summary<'_> {
     ) -> DistanceRecordSet<'a> {
         let mut res = DistanceRecordSet::new();
         for (name, distance) in record_distances {
-            res.insert(name, Summary::calculate_distance_record(data, distance));
+            res.0.insert(name, Summary::calculate_distance_record(data, distance));
         }
         res
     }
@@ -258,7 +258,7 @@ impl Summary<'_> {
             .tickstamps
             .last()
             .ok_or(InvalidRunError::InsufficientData)?;
-        Ok((last - first)/1000)
+        Ok((last - first) / 1000)
     }
 
     fn calculate_total_calories(data: &Vec<IntervalDatum>) -> f32 {
